@@ -1,0 +1,5 @@
+Testy czasu:
+g++ -o main.exe main.cpp structures/array.cpp structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp structures/bintree.cpp structures/maxheap.cpp structures/stack.cppS
+
+Testy zużycia pamięci RAM:
+g++ -o mainRAM.exe mainRAM.cpp structures/array.cpp structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp structures/bintree.cpp structures/maxheap.cpp structures/stack.cpp
