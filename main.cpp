@@ -5,7 +5,6 @@
 #include "structures/queue.h"
 #include "structures/stack.h"
 #include "structures/timer.h"
-#include <conio.h>
 #include <iostream>
 
 using namespace std;
@@ -754,19 +753,19 @@ int main(int argc, char *argv[]) {
           "================="
        << endl;
   cout << "*** Measure times for Array ***" << endl;
-  array(1000, 12);
+  ::array(1000, 12);
 
   cout << "===================================================================="
           "================="
        << endl;
   cout << "*** Measure times for Stack ***" << endl;
-  stack(1000, 12);
+  ::stack(1000, 12);
 
   cout << "===================================================================="
           "================="
        << endl;
   cout << "*** Measure times for Queue ***" << endl;
-  queue(1000, 12);
+  ::queue(1000, 12);
 
   cout << "===================================================================="
           "================="
@@ -789,10 +788,11 @@ int main(int argc, char *argv[]) {
           "================="
        << endl;
 
-  int x;
-  cin >> x;
+  cout << "Press Enter to exit...";
+  cin.ignore();
+  cin.get();
   return 0;
-  // compile with: g++ -o main.exe main.cpp structures/array.cpp
+  // compile with: g++ -o benchmark main.cpp structures/array.cpp
   // structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp
   // structures/bintree.cpp structures/maxheap.cpp structures/stack.cpp
 }

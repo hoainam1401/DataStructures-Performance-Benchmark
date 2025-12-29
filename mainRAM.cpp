@@ -1,6 +1,11 @@
+#ifdef _WIN32
 #include "psapi.h"
 #include "windows.h"
-#include <conio.h>
+#else
+#include <sys/resource.h>
+#include <mach/mach.h>
+#endif
+
 #include <iostream>
 
 #include "structures/array.h"
@@ -16,19 +21,28 @@ https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consum
 https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/ns-sysinfoapi-memorystatusex
 */
 // returns how many ram is currently used (B)
-SIZE_T get_RAM_USAGE() {
+size_t get_RAM_USAGE() {
+#ifdef _WIN32
   PROCESS_MEMORY_COUNTERS_EX pmc;
   GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS *)&pmc,
                        sizeof(pmc));
-  SIZE_T virtualMemUsedByMe = pmc.PrivateUsage;
   return pmc.WorkingSetSize;
+#else
+  // macOS implementation using task_info
+  struct mach_task_basic_info info;
+  mach_msg_type_number_t infoCount = MACH_TASK_BASIC_INFO_COUNT;
+  if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                (task_info_t)&info, &infoCount) != KERN_SUCCESS)
+    return 0;
+  return info.resident_size;
+#endif
 }
 
 // conducts ram tests for stack
-void stack(int howManyTestUnits, int howManyValuesToPrefill) {
+void test_stack(int howManyTestUnits, int howManyValuesToPrefill) {
 
-  SIZE_T sumBefore = 0.0;
-  SIZE_T sumAfter = 0.0;
+  size_t sumBefore = 0.0;
+  size_t sumAfter = 0.0;
   float randomValue;
 
   for (int i = 0; i < howManyTestUnits; i++) {
@@ -99,10 +113,10 @@ void stack(int howManyTestUnits, int howManyValuesToPrefill) {
 }
 
 // conducts ram tests for bst
-void bst(int howManyTestUnits, int howManyValuesToPrefill) {
+void test_bst(int howManyTestUnits, int howManyValuesToPrefill) {
 
-  SIZE_T sumBefore = 0.0;
-  SIZE_T sumAfter = 0.0;
+  size_t sumBefore = 0.0;
+  size_t sumAfter = 0.0;
   float randomValue;
 
   for (int i = 0; i < howManyTestUnits; i++) {
@@ -180,10 +194,10 @@ void bst(int howManyTestUnits, int howManyValuesToPrefill) {
 }
 
 // conducts ram tests for linkedlist
-void linkedlist(int howManyTestUnits, int howManyValuesToPrefill) {
+void test_linkedlist(int howManyTestUnits, int howManyValuesToPrefill) {
 
-  SIZE_T sumBefore = 0.0;
-  SIZE_T sumAfter = 0.0;
+  size_t sumBefore = 0.0;
+  size_t sumAfter = 0.0;
 
   float randomValue;
 
@@ -256,10 +270,10 @@ void linkedlist(int howManyTestUnits, int howManyValuesToPrefill) {
 }
 
 // conducts ram tests for heap
-void heap(int howManyTestUnits, int howManyValuesToPrefill) {
+void test_heap(int howManyTestUnits, int howManyValuesToPrefill) {
 
-  SIZE_T sumBefore = 0.0;
-  SIZE_T sumAfter = 0.0;
+  size_t sumBefore = 0.0;
+  size_t sumAfter = 0.0;
 
   float randomValue;
 
@@ -332,10 +346,10 @@ void heap(int howManyTestUnits, int howManyValuesToPrefill) {
 }
 
 // conducts ram tests for queue
-void queue(int howManyTestUnits, int howManyValuesToPrefill) {
+void test_queue(int howManyTestUnits, int howManyValuesToPrefill) {
 
-  SIZE_T sumBefore = 0.0;
-  SIZE_T sumAfter = 0.0;
+  size_t sumBefore = 0.0;
+  size_t sumAfter = 0.0;
   float randomValue;
 
   for (int i = 0; i < howManyTestUnits; i++) {
@@ -407,10 +421,10 @@ void queue(int howManyTestUnits, int howManyValuesToPrefill) {
 }
 
 // conducts ram tests for array
-void array(int howManyTestUnits, int howManyValuesToPrefill) {
+void test_array(int howManyTestUnits, int howManyValuesToPrefill) {
 
-  SIZE_T sumBefore = 0.0;
-  SIZE_T sumAfter = 0.0;
+  size_t sumBefore = 0.0;
+  size_t sumAfter = 0.0;
   float randomValue;
 
   for (int i = 0; i < howManyTestUnits; i++) {
@@ -486,46 +500,47 @@ int main(int argc, char *argv[]) {
           "================="
        << endl;
   cout << "*** Measure times for Queue ***" << endl;
-  queue(1000, 12);
+  test_queue(1000, 12);
 
   cout << "===================================================================="
           "================="
        << endl;
   cout << "*** Measure usage for Stack ***" << endl;
-  stack(1000, 12);
+  test_stack(1000, 12);
 
   cout << "===================================================================="
           "================="
        << endl;
   cout << "*** Measure times for LinkedList ***" << endl;
-  linkedlist(1000, 12);
+  test_linkedlist(1000, 12);
 
   cout << "===================================================================="
           "================="
        << endl;
   cout << "*** Measure times for Binary Tree ***" << endl;
-  bst(1000, 12);
+  test_bst(1000, 12);
 
   cout << "===================================================================="
           "================="
        << endl;
   cout << "*** Measure times for Heap ***" << endl;
-  heap(1000, 12);
+  test_heap(1000, 12);
 
   cout << "===================================================================="
           "================="
        << endl;
   cout << "*** Measure times for Array ***" << endl;
-  array(1000, 12);
+  test_array(1000, 12);
   cout << "===================================================================="
           "================="
        << endl;
 
-  int x;
-  cin >> x;
+  cout << "Press Enter to exit...";
+  cin.ignore();
+  cin.get();
 
   return 0;
-  // compile with: g++ -o mainRAM.exe mainRAM.cpp structures/array.cpp
+  // compile with: g++ -o benchmarkRAM mainRAM.cpp structures/array.cpp
   // structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp
   // structures/bintree.cpp structures/maxheap.cpp structures/stack.cpp
 }

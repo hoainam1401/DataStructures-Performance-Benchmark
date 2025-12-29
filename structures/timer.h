@@ -6,7 +6,7 @@ using namespace std;
 class Timer {
 private:
   double PCFreq;
-  __int64 CounterStart;
+  long long CounterStart;
 
 public:
   // Constructor
