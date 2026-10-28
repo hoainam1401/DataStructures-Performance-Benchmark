@@ -37,7 +37,8 @@ MemorySamples sampleMemory(Factory factory, Insert insert,
   const std::size_t created = currentResidentMemory();
   insert(*structure, values.front());
   const std::size_t oneElement = currentResidentMemory();
-  for (auto iterator = values.begin() + 1; iterator != values.end(); ++iterator) {
+  for (auto iterator = values.begin() + 1; iterator != values.end();
+       ++iterator) {
     insert(*structure, *iterator);
   }
   const std::size_t filled = currentResidentMemory();
@@ -45,17 +46,18 @@ MemorySamples sampleMemory(Factory factory, Insert insert,
 }
 
 void printSamples(std::string_view name, const MemorySamples &samples) {
-  std::cout << "\n" << name << "\n"
+  std::cout << "\n"
+            << name << "\n"
             << "  baseline:      " << samples.before << " B\n"
-            << "  after create:  " << samples.created << " B ("
-            << std::showpos << difference(samples.created, samples.before)
-            << std::noshowpos << ")\n"
+            << "  after create:  " << samples.created << " B (" << std::showpos
+            << difference(samples.created, samples.before) << std::noshowpos
+            << ")\n"
             << "  after one:     " << samples.oneElement << " B ("
             << std::showpos << difference(samples.oneElement, samples.created)
             << std::noshowpos << ")\n"
-            << "  after prefill: " << samples.filled << " B ("
-            << std::showpos << difference(samples.filled, samples.created)
-            << std::noshowpos << ")\n";
+            << "  after prefill: " << samples.filled << " B (" << std::showpos
+            << difference(samples.filled, samples.created) << std::noshowpos
+            << ")\n";
 }
 } // namespace
 
@@ -74,45 +76,44 @@ int main(int argc, char *argv[]) {
                   [&] { return distribution(engine); });
 
     std::cout << "Current resident-memory samples; prefill=" << options.prefill
-              << "\nSmall allocations may be hidden by allocator and page granularity.\n";
+              << "\nSmall allocations may be hidden by allocator and page "
+                 "granularity.\n";
 
-    printSamples("Array", sampleMemory(
-                              [] { return std::make_unique<Array>(); },
-                              [](Array &value, float item) {
+    printSamples("Array", sampleMemory([] { return std::make_unique<Array>(); },
+                                       [](Array &value, float item) {
+                                         value.insertValue(item);
+                                       },
+                                       values));
+    printSamples("Stack", sampleMemory([] { return std::make_unique<Stack>(); },
+                                       [](Stack &value, float item) {
+                                         value.push(item);
+                                       },
+                                       values));
+    printSamples("Queue",
+                 sampleMemory(
+                     [&] {
+                       return std::make_unique<Queue>(
+                           std::max<std::size_t>(24, options.prefill));
+                     },
+                     [](Queue &value, float item) { value.enqueue(item); },
+                     values));
+    printSamples(
+        "Binary search tree",
+        sampleMemory([] { return std::make_unique<BST>(); },
+                     [](BST &value, float item) { value.insert(item); },
+                     values));
+    printSamples("Linked list",
+                 sampleMemory([] { return std::make_unique<LinkedList>(); },
+                              [](LinkedList &value, float item) {
                                 value.insertValue(item);
                               },
                               values));
-    printSamples("Stack", sampleMemory(
-                              [] { return std::make_unique<Stack>(); },
-                              [](Stack &value, float item) { value.push(item); },
-                              values));
-    printSamples("Queue", sampleMemory(
-                              [&] {
-                                return std::make_unique<Queue>(
-                                    std::max<std::size_t>(24, options.prefill));
-                              },
-                              [](Queue &value, float item) {
-                                value.enqueue(item);
-                              },
-                              values));
-    printSamples("Binary search tree",
-                 sampleMemory(
-                     [] { return std::make_unique<BST>(); },
-                     [](BST &value, float item) { value.insert(item); }, values));
-    printSamples("Linked list",
-                 sampleMemory(
-                     [] { return std::make_unique<LinkedList>(); },
-                     [](LinkedList &value, float item) {
-                       value.insertValue(item);
-                     },
-                     values));
     printSamples("Max heap",
-                 sampleMemory(
-                     [] { return std::make_unique<Heap>(); },
-                     [](Heap &value, float item) {
-                       value.insertNodeMaxHeap(item);
-                     },
-                     values));
+                 sampleMemory([] { return std::make_unique<Heap>(); },
+                              [](Heap &value, float item) {
+                                value.insertNodeMaxHeap(item);
+                              },
+                              values));
   } catch (const std::exception &error) {
     std::cerr << "error: " << error.what() << '\n';
     return 1;
@@ -120,7 +121,8 @@ int main(int argc, char *argv[]) {
 }
 
 // Allow this entrypoint to be compiled directly without listing every source
-// file. CMake defines BENCHMARK_USE_LIBRARY and links the same sources normally.
+// file. CMake defines BENCHMARK_USE_LIBRARY and links the same sources
+// normally.
 #ifndef BENCHMARK_USE_LIBRARY
 #include "memory_usage.cpp"
 #include "structures/array.cpp"

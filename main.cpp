@@ -55,8 +55,8 @@ double measureOperation(std::size_t iterations, Factory factory, Setup setup,
     auto structure = factory();
     setup(*structure, i);
     timer.startCounter();
-    if constexpr (std::is_void_v<decltype(
-                      std::invoke(operation, *structure, i))>) {
+    if constexpr (std::is_void_v<decltype(std::invoke(operation, *structure,
+                                                      i))>) {
       std::invoke(operation, *structure, i);
       total += timer.getCounter();
     } else {
@@ -85,31 +85,28 @@ void runSuite(std::string_view name, std::size_t iterations,
     insert(structure, values[iteration * (prefill + 1) + prefill]);
   };
 
-  std::cout << "\n" << name << "\n"
+  std::cout << "\n"
+            << name << "\n"
             << "  create:          " << measureCreation(iterations, factory)
             << " ms\n"
             << "  insert empty:    "
             << measureOperation(iterations, factory, emptySetup, add) << " ms\n"
-            << "  insert prefilled:"
-            << std::setw(10)
-            << measureOperation(iterations, factory, filledSetup, add) << " ms\n"
+            << "  insert prefilled:" << std::setw(10)
+            << measureOperation(iterations, factory, filledSetup, add)
+            << " ms\n"
             << "  remove:          "
-            << measureOperation(iterations, factory, filledSetup,
-                                [&](auto &value, std::size_t) {
-                                  return remove(value);
-                                })
+            << measureOperation(
+                   iterations, factory, filledSetup,
+                   [&](auto &value, std::size_t) { return remove(value); })
             << " ms\n"
             << "  average:         "
-            << measureOperation(iterations, factory, filledSetup,
-                                [&](auto &value, std::size_t) {
-                                  return average(value);
-                                })
+            << measureOperation(
+                   iterations, factory, filledSetup,
+                   [&](auto &value, std::size_t) { return average(value); })
             << " ms\n"
             << "  clear:           "
             << measureOperation(iterations, factory, filledSetup,
-                                [&](auto &value, std::size_t) {
-                                  clear(value);
-                                })
+                                [&](auto &value, std::size_t) { clear(value); })
             << " ms\n";
 }
 
@@ -155,7 +152,10 @@ int main(int argc, char *argv[]) {
 
     runSuite(
         "Queue", options.iterations, options.prefill, values,
-        [&] { return std::make_unique<Queue>(std::max<std::size_t>(24, options.prefill + 1)); },
+        [&] {
+          return std::make_unique<Queue>(
+              std::max<std::size_t>(24, options.prefill + 1));
+        },
         [](Queue &value, float item) { value.enqueue(item); },
         [](Queue &value) { return value.dequeue(); },
         [](const Queue &value) { return value.calculateAverage(); },
@@ -173,7 +173,9 @@ int main(int argc, char *argv[]) {
         "Linked list", options.iterations, options.prefill, values,
         [] { return std::make_unique<LinkedList>(); },
         [](LinkedList &value, float item) { value.insertValue(item); },
-        [](LinkedList &value) { return value.removeFromIndex(value.size() / 2); },
+        [](LinkedList &value) {
+          return value.removeFromIndex(value.size() / 2);
+        },
         [](const LinkedList &value) { return value.calculateAverage(); },
         [](LinkedList &value) { value.cleanList(); });
 
@@ -191,7 +193,8 @@ int main(int argc, char *argv[]) {
 }
 
 // Allow this entrypoint to be compiled directly without listing every source
-// file. CMake defines BENCHMARK_USE_LIBRARY and links the same sources normally.
+// file. CMake defines BENCHMARK_USE_LIBRARY and links the same sources
+// normally.
 #ifndef BENCHMARK_USE_LIBRARY
 #include "structures/array.cpp"
 #include "structures/bintree.cpp"
