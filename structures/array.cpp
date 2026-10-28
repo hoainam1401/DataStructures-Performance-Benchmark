@@ -1,69 +1,48 @@
 #include "array.h"
-#include <fstream>
-#include <iostream>
-using namespace std;
 
-Array::Array() {
-  size = 0;
-  this->Arr = new float[size];
-}
-
-Array::~Array() {
-  cleanArray();
-  delete[] Arr;
-  delete Arr;
-}
+#include <algorithm>
 
 void Array::insertValue(float value) {
-  float *temp = new float[size + 1];
-  for (int i = 0; i < size; i++) {
-    temp[i] = Arr[i];
+  auto replacement = std::make_unique<float[]>(size_ + 1);
+  if (size_ > 0) {
+    std::copy_n(data_.get(), size_, replacement.get());
   }
-  size++;
-  delete[] Arr;
-  Arr = temp;
-  Arr[size - 1] = value;
+  replacement[size_] = value;
+  data_ = std::move(replacement);
+  ++size_;
 }
 
-float Array::removeFromIndex(int index) {
+std::optional<float> Array::removeFromIndex(std::size_t index) {
+  if (index >= size_) {
+    return std::nullopt;
+  }
 
-  if (index > size - 1 || index < 0) {
-    return -99.99;
+  const float removed = data_[index];
+  auto replacement = size_ > 1 ? std::make_unique<float[]>(size_ - 1) : nullptr;
+  if (size_ > 1) {
+    std::copy_n(data_.get(), index, replacement.get());
+    std::copy(data_.get() + index + 1, data_.get() + size_,
+              replacement.get() + index);
   }
-  float *temp = new float[size - 1];
-  for (int i = 0; i < index; i++) {
-    temp[i] = Arr[i];
-  }
-  for (int i = index + 1; i < size; i++) {
-    temp[i - 1] = Arr[i];
-  }
-  float ret = Arr[index];
-  size--;
-  delete[] Arr;
-  Arr = temp;
-  return ret;
+  data_ = std::move(replacement);
+  --size_;
+  return removed;
 }
 
-float Array::calculateAverage() {
-  float sum = 0.0;
-  for (int i = 0; i < size; i++) {
-    sum += Arr[i];
+std::optional<float> Array::calculateAverage() const {
+  if (size_ == 0) {
+    return std::nullopt;
   }
-  return (sum / size);
-}
-
-void Array::cleanArray() {
-  float *temp = new float[0];
-  delete[] Arr;
-  Arr = temp;
-  this->size = 0;
-}
-
-int Array::getSize() { return this->size; }
-
-void Array::printArray() {
-  for (int i = 0; i < size; i++) {
-    cout << Arr[i] << " ";
+  double sum = 0.0;
+  for (std::size_t i = 0; i < size_; ++i) {
+    sum += data_[i];
   }
-  cout << endl;
+  return static_cast<float>(sum / static_cast<double>(size_));
 }
+
+void Array::cleanArray() noexcept {
+  data_.reset();
+  size_ = 0;
+}
+
+std::size_t Array::getSize() const noexcept { return size_; }

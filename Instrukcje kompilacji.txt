@@ -1,5 +1,18 @@
+Wymagania: CMake 3.16+ oraz kompilator obsługujący C++20.
+
+Szybka kompilacja bez CMake:
+clang++ -std=c++20 main.cpp -o benchmark-local
+clang++ -std=c++20 mainRAM.cpp -o benchmarkRAM-local
+
+Kompilacja i testy (Windows, Linux, macOS):
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+
 Testy czasu:
-g++ -o main.exe main.cpp structures/array.cpp structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp structures/bintree.cpp structures/maxheap.cpp structures/stack.cppS
+build/benchmark --iterations 1000 --prefill 12
 
 Testy zużycia pamięci RAM:
-g++ -o mainRAM.exe mainRAM.cpp structures/array.cpp structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp structures/bintree.cpp structures/maxheap.cpp structures/stack.cpp
+build/benchmarkRAM --prefill 100000
+
+Visual Studio umieszcza pliki wykonywalne w katalogu build/Release/.

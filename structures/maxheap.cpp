@@ -1,75 +1,37 @@
 #include "maxheap.h"
-#include <fstream>
-#include <iostream>
-#include <vector>
-using namespace std;
 
-Heap::Heap() { this->cnt = 0; }
+#include <algorithm>
+#include <functional>
 
-Heap::~Heap() { deleteHeap(); }
-
-void Heap::swap(float *firstElement, float *secondElement) {
-  float temp = *secondElement;
-  *secondElement = *firstElement;
-  *firstElement = temp;
+void Heap::insertNodeMaxHeap(float value) {
+  values_.push_back(value);
+  std::push_heap(values_.begin(), values_.end());
 }
 
-void Heap::heapify(int index, float heapType) {
-  int size = this->maxHeap.size();
-  int threshold = index;
-  int left = 2 * index + 1;
-  int right = 2 * index + 2;
-
-  // Max heap
-  if (heapType == 0) {
-    if (left < size && this->maxHeap[left] >= this->maxHeap[threshold])
-      threshold = left;
-    if (right < size && this->maxHeap[right] >= this->maxHeap[threshold])
-      threshold = right;
+std::optional<float> Heap::deleteNodeMaxHeap() {
+  if (values_.empty()) {
+    return std::nullopt;
   }
+  std::pop_heap(values_.begin(), values_.end());
+  const float value = values_.back();
+  values_.pop_back();
+  return value;
+}
 
-  if (threshold != index) {
-    if (heapType == 0) {
-      swap(&this->maxHeap[index], &this->maxHeap[threshold]);
-    }
-    heapify(threshold, heapType);
+std::optional<float> Heap::calculateAverage() const noexcept {
+  if (values_.empty()) {
+    return std::nullopt;
   }
-}
-
-void Heap::insertNodeMaxHeap(float data) {
-  this->maxHeap.push_back(data);
-  int size = this->maxHeap.size();
-  for (int i = size / 2 - 1; i >= 0; i--) {
-    heapify(i, 0);
+  double sum = 0.0;
+  for (float value : values_) {
+    sum += value;
   }
+  return static_cast<float>(sum / static_cast<double>(values_.size()));
 }
 
-void Heap::deleteNodeMaxHeap() {
-  int size = this->maxHeap.size();
-
-  swap(&this->maxHeap[0], &this->maxHeap[size - 1]);
-  this->maxHeap.pop_back();
-
-  for (int i = size / 2 - 1; i >= 0; i--) {
-    heapify(i, 0);
-  }
+void Heap::deleteHeap() noexcept {
+  values_.clear();
+  values_.shrink_to_fit();
 }
 
-float Heap::calculateAverage() {
-  float sum = 0.0;
-  for (int i = 0; i < this->maxHeap.size(); ++i) {
-    sum += this->maxHeap[i];
-  }
-  return (sum / this->maxHeap.size());
-}
-
-void Heap::displayHeap() {
-  for (int i = 0; i < this->maxHeap.size(); ++i)
-    cout << this->maxHeap[i] << " ";
-  cout << endl;
-}
-
-void Heap::deleteHeap() {
-  this->maxHeap.clear();
-  this->cnt = 0;
-}
+std::size_t Heap::size() const noexcept { return values_.size(); }

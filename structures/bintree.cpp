@@ -1,107 +1,90 @@
 #include "bintree.h"
-#include <fstream>
-#include <iostream>
-using namespace std;
 
-BST::BST() {
-  this->root = NULL;
-  this->cnt = 0;
+BST::~BST() { clear(); }
+
+void BST::insert(float value) {
+  auto *link = &root_;
+  while (*link) {
+    link = value > (*link)->data ? &(*link)->right : &(*link)->left;
+  }
+  *link = std::make_unique<Node>(Node{value, nullptr, nullptr});
+  ++size_;
 }
 
-BST::~BST() { deleteTree(BST::getRoot()); }
-
-struct NodeTree *BST::getRoot() { return this->root; }
-
-struct NodeTree *BST::insertNodeTree(struct NodeTree *root, float data) {
-  struct NodeTree *newNodeTree = new NodeTree;
-  newNodeTree->data = data;
-  newNodeTree->right = NULL;
-  newNodeTree->left = NULL;
-
-  if (!root) {
-    return newNodeTree;
+bool BST::erase(float value) noexcept {
+  if (!eraseNode(root_, value)) {
+    return false;
   }
-  if (data > root->data) {
-    root->right = insertNodeTree(root->right, data);
-  } else {
-    root->left = insertNodeTree(root->left, data);
-  }
-  return root;
+  --size_;
+  return true;
 }
 
-struct NodeTree *BST::deleteNodeTree(struct NodeTree *root, float data) {
-  if (root == NULL) {
-    return root;
-  }
+bool BST::eraseRoot() noexcept {
+  return root_ ? erase(root_->data) : false;
+}
 
-  if (data > root->data) {
-    root->right = deleteNodeTree(root->right, data);
-  } else if (data < root->data) {
-    root->left = deleteNodeTree(root->left, data);
+bool BST::eraseNode(std::unique_ptr<Node> &node, float value) noexcept {
+  if (!node) {
+    return false;
+  }
+  if (value < node->data) {
+    return eraseNode(node->left, value);
+  }
+  if (value > node->data) {
+    return eraseNode(node->right, value);
+  }
+  if (!node->left) {
+    node = std::move(node->right);
+  } else if (!node->right) {
+    node = std::move(node->left);
   } else {
-    if (root->left == NULL && root->right == NULL) {
-      free(root);
-      return NULL;
-    } else if (root->left == NULL) {
-      struct NodeTree *rightNodeTree = root->right;
-      free(root);
-      return rightNodeTree;
-    } else if (root->right == NULL) {
-      struct NodeTree *leftNodeTree = root->left;
-      free(root);
-      return leftNodeTree;
+    auto *successor = &node->right;
+    while ((*successor)->left) {
+      successor = &(*successor)->left;
+    }
+    node->data = (*successor)->data;
+    if ((*successor)->right) {
+      *successor = std::move((*successor)->right);
     } else {
-      struct NodeTree *rightNodeTree = root->right;
-      struct NodeTree *tmp = rightNodeTree;
-      while (tmp && tmp->left != NULL) {
-        tmp = tmp->left;
-      }
-      root->data = tmp->data;
-      root->right = deleteNodeTree(root->right, tmp->data);
+      successor->reset();
     }
   }
-  return root;
+  return true;
 }
 
-float BST::Sum(struct NodeTree *root) {
-  if (root == NULL) {
-    return 0;
+std::optional<float> BST::calculateAverage() const noexcept {
+  if (!root_) {
+    return std::nullopt;
   }
-  return root->data + Sum(root->right) + Sum(root->left);
+
+  double sum = 0.0;
+  std::size_t count = 0;
+  const auto visit = [&sum, &count](const auto &self, const Node *node) -> void {
+    if (!node) {
+      return;
+    }
+    sum += node->data;
+    ++count;
+    self(self, node->left.get());
+    self(self, node->right.get());
+  };
+  visit(visit, root_.get());
+  return static_cast<float>(sum / static_cast<double>(count));
 }
 
-float BST::count(struct NodeTree *root) {
-  if (root == NULL) {
-    return 0;
+void BST::clear() noexcept {
+  // Iterative erasure avoids recursive destruction of a badly skewed tree.
+  while (root_) {
+    if (root_->left) {
+      auto left = std::move(root_->left);
+      root_->left = std::move(left->right);
+      left->right = std::move(root_);
+      root_ = std::move(left);
+    } else {
+      root_ = std::move(root_->right);
+    }
   }
-  return count(root->right) + count(root->left) + 1;
+  size_ = 0;
 }
 
-float BST::calculateAverage(struct NodeTree *root) {
-  return static_cast<double>(Sum(root)) / count(root);
-}
-
-void BST::displayTreeUtil(struct NodeTree *root, int space) {
-  if (root == NULL)
-    return;
-  space += cnt;
-
-  displayTreeUtil(root->right, space + 2);
-
-  cout << endl;
-  for (int i = cnt; i < space; i++)
-    cout << " ";
-  cout << root->data << "\n";
-
-  displayTreeUtil(root->left, space + 2);
-}
-
-void BST::displayTree(struct NodeTree *root) { displayTreeUtil(root, 2); }
-
-void BST::deleteTree(struct NodeTree *root) {
-  if (root == NULL)
-    return;
-  deleteTree(root->left);
-  deleteTree(root->right);
-  delete root;
-}
+std::size_t BST::size() const noexcept { return size_; }

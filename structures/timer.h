@@ -1,20 +1,12 @@
-#include <iostream>
-#include <time.h>
+#pragma once
 
-using namespace std;
+#include <chrono>
 
 class Timer {
-private:
-  double PCFreq;
-  long long CounterStart;
-
 public:
-  // Constructor
-  Timer();
+  void startCounter() noexcept;
+  [[nodiscard]] double getCounter() const noexcept;
 
-  // Starts Counter
-  void startCounter();
-
-  // Returns time of execution
-  double getCounter();
+private:
+  std::chrono::steady_clock::time_point start_ = std::chrono::steady_clock::now();
 };

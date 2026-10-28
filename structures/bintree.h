@@ -1,47 +1,27 @@
-#include <iostream>
-using namespace std;
+#pragma once
 
-struct NodeTree {
-  float data;
-  struct NodeTree *left;
-  struct NodeTree *right;
-};
+#include <cstddef>
+#include <memory>
+#include <optional>
 
 class BST {
-private:
-  int cnt = 0;
-
 public:
-  struct NodeTree *root = NULL;
-
-  // constructor 1
-  BST();
-
-  // destructor
   ~BST();
+  void insert(float value);
+  [[nodiscard]] bool erase(float value) noexcept;
+  [[nodiscard]] bool eraseRoot() noexcept;
+  [[nodiscard]] std::optional<float> calculateAverage() const noexcept;
+  void clear() noexcept;
+  [[nodiscard]] std::size_t size() const noexcept;
 
-  // Calculate Sum of all value of Node
-  float Sum(struct NodeTree *root);
+private:
+  struct Node {
+    float data;
+    std::unique_ptr<Node> left;
+    std::unique_ptr<Node> right;
+  };
 
-  // Count all the node of tree
-  float count(struct NodeTree *root);
-
-  // Calculate average of the value of node
-  float calculateAverage(struct NodeTree *root);
-
-  // Find root of the binary tree
-  struct NodeTree *getRoot();
-
-  // Add new node to the tree
-  struct NodeTree *insertNodeTree(struct NodeTree *root, float data);
-
-  // Delete node from the tree
-  struct NodeTree *deleteNodeTree(struct NodeTree *root, float data);
-
-  // Display the tree
-  void displayTreeUtil(struct NodeTree *root, int space);
-  void displayTree(struct NodeTree *root);
-
-  // Delete the tree
-  void deleteTree(struct NodeTree *root);
+  static bool eraseNode(std::unique_ptr<Node> &node, float value) noexcept;
+  std::unique_ptr<Node> root_;
+  std::size_t size_ = 0;
 };

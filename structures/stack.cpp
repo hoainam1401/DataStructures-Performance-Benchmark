@@ -1,79 +1,44 @@
 #include "stack.h"
-#include <iostream>
-using namespace std;
 
-Stack::Stack() { this->root = NULL; }
+Stack::~Stack() { clear(); }
 
-Stack::Stack(StackNode *root) { this->root = root; }
-
-Stack::~Stack() { deleteStack(Stack::getRoot()); }
-
-struct StackNode *Stack::getRoot() { return this->root; }
-
-struct StackNode *Stack::newNode(float data) {
-  struct StackNode *stackNode = new StackNode;
-  stackNode->data = data;
-  stackNode->next = NULL;
-  return stackNode;
-}
-float Stack::isEmpty(struct StackNode *root) { return !root; }
-
-void Stack::push(struct StackNode **root, float data) {
-  struct StackNode *stackNode = newNode(data);
-  stackNode->next = *root;
-  *root = stackNode;
-  // cout << data;
+void Stack::push(float value) {
+  root_ = std::make_unique<Node>(Node{value, std::move(root_)});
+  ++size_;
 }
 
-float Stack::pop(struct StackNode **root) {
-  if (isEmpty(*root))
-    return INT_MIN;
-  struct StackNode *temp = *root;
-  *root = (*root)->next;
-  int popped = temp->data;
-  free(temp);
-
-  return popped;
-}
-
-float Stack::peek(struct StackNode *root) {
-  if (isEmpty(root))
-    return INT_MIN;
-  return root->data;
-}
-
-float Stack::Sum(struct StackNode *root) {
-  if (root == NULL) {
-    return 0;
+std::optional<float> Stack::pop() noexcept {
+  if (!root_) {
+    return std::nullopt;
   }
-  return root->data + Sum(root->next);
+  const float value = root_->data;
+  root_ = std::move(root_->next);
+  --size_;
+  return value;
 }
 
-float Stack::count(struct StackNode *root) {
-  if (root == NULL) {
-    return 0;
+std::optional<float> Stack::peek() const noexcept {
+  return root_ ? std::optional<float>{root_->data} : std::nullopt;
+}
+
+std::optional<float> Stack::calculateAverage() const noexcept {
+  if (!root_) {
+    return std::nullopt;
   }
-  return count(root->next) + 1;
-}
-
-float Stack::calculateAverage(struct StackNode *root) {
-  return static_cast<double>(Sum(root)) / count(root);
-}
-
-void Stack::deleteStack(struct StackNode *root) {
-  if (root == NULL)
-    return;
-  deleteStack(root->next);
-  delete root;
-}
-
-void Stack::displayStack(struct StackNode *root) {
-  // cout << pop(&root) << endl;
-  // cout << peek(root) << endl;
-  while (!isEmpty(root)) {
-    // print top element in stack
-    cout << peek(root) << " ";
-    // remove top element in stack
-    pop(&root);
+  double sum = 0.0;
+  for (auto *node = root_.get(); node != nullptr; node = node->next.get()) {
+    sum += node->data;
   }
+  return static_cast<float>(sum / static_cast<double>(size_));
 }
+
+void Stack::clear() noexcept {
+  while (root_) {
+    root_ = std::move(root_->next);
+  }
+  size_ = 0;
+}
+
+bool Stack::isEmpty() const noexcept { return size_ == 0; }
+
+std::size_t Stack::size() const noexcept { return size_; }

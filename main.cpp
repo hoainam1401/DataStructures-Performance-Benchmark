@@ -1,3 +1,4 @@
+#include "benchmark_options.h"
 #include "structures/array.h"
 #include "structures/bintree.h"
 #include "structures/linkedlist.h"
@@ -5,794 +6,198 @@
 #include "structures/queue.h"
 #include "structures/stack.h"
 #include "structures/timer.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <functional>
+#include <iomanip>
 #include <iostream>
+#include <memory>
+#include <optional>
+#include <random>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
-using namespace std;
+namespace {
+volatile float resultSink = 0.0F;
 
-// conducts time tests for stack
-void stack(int howManyTestUnits, int howManyValuesToPrefill) {
-  Timer timer;
-  double sumValue = 0.0;
-  float randomValue;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    timer.startCounter();
-    Stack *myStack = new Stack();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myStack->deleteStack(myStack->root);
-    free(myStack);
-  }
-  cout << endl
-       << "Average time of creating new stack instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    Stack *myStack = new Stack();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myStack->push(&myStack->root, randomValue);
+template <typename Result> void consume(const Result &result) {
+  if constexpr (std::is_same_v<Result, std::optional<float>>) {
+    if (result) {
+      resultSink = resultSink + *result;
     }
-
-    timer.startCounter();
-    myStack->deleteStack(myStack->root);
-    free(myStack);
-
-    sumValue += (timer.getCounter()) * 100000;
+  } else if constexpr (std::is_same_v<Result, bool>) {
+    resultSink = resultSink + (result ? 1.0F : 0.0F);
   }
-  cout << endl
-       << "Average time of deleting prefilled stack instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Stack *myStack = new Stack();
-
-    srand(time(NULL));
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myStack->push(&myStack->root, randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myStack->deleteStack(myStack->root);
-    free(myStack);
-  }
-  cout << endl
-       << "Average time of adding random value to empty stack is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Stack *myStack = new Stack();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myStack->push(&myStack->root, randomValue);
-    }
-
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myStack->push(&myStack->root, randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myStack->deleteStack(myStack->root);
-    free(myStack);
-  }
-  cout << endl
-       << "Average time of adding random value to prefilled stack is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Stack *myStack = new Stack();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myStack->push(&myStack->root, randomValue);
-    }
-
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myStack->pop(&myStack->root);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myStack->deleteStack(myStack->root);
-    free(myStack);
-  }
-  cout << endl
-       << "Average time of deleting value from prefilled stack is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Stack *myStack = new Stack();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myStack->push(&myStack->root, randomValue);
-    }
-
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myStack->calculateAverage(myStack->root);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myStack->deleteStack(myStack->root);
-    free(myStack);
-  }
-  cout << endl
-       << "Average time of calculating average of random value of prefilled "
-          "stack is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
 }
 
-// conducts time tests for bst
-void bst(int howManyTestUnits, int howManyValuesToPrefill) {
+template <typename Factory>
+double measureCreation(std::size_t iterations, Factory factory) {
   Timer timer;
-  double sumValue = 0.0;
-  float randomValue;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
+  double total = 0.0;
+  for (std::size_t i = 0; i < iterations; ++i) {
     timer.startCounter();
-    BST *myTree = new BST();
-    NodeTree *root = myTree->getRoot();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myTree->deleteTree(myTree->getRoot());
-    free(myTree);
-    free(root);
+    auto structure = factory();
+    total += timer.getCounter();
+    resultSink = resultSink + (structure ? 1.0F : 0.0F);
   }
-  cout << endl
-       << "Average time of creating new bst instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    BST *myTree = new BST();
-    NodeTree *root = myTree->getRoot();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      root = myTree->insertNodeTree(root, randomValue);
-    }
-
-    timer.startCounter();
-    myTree->deleteTree(myTree->getRoot());
-    free(myTree);
-    free(root);
-
-    sumValue += (timer.getCounter()) * 100000;
-  }
-  cout << endl
-       << "Average time of deleting prefilled bst instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    BST *myTree = new BST();
-    NodeTree *root = myTree->getRoot();
-    srand(time(NULL));
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    root = myTree->insertNodeTree(root, randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myTree->deleteTree(myTree->getRoot());
-    free(myTree);
-    free(root);
-  }
-  cout << endl
-       << "Average time of adding random value to empty BST is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    BST *myTree = new BST();
-    NodeTree *root = myTree->getRoot();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      root = myTree->insertNodeTree(root, randomValue);
-    }
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    root = myTree->insertNodeTree(root, randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-    myTree->deleteTree(myTree->getRoot());
-    free(myTree);
-    free(root);
-  }
-  cout << endl
-       << "Average time of adding random value to prefilled BST is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    BST *myTree = new BST();
-    NodeTree *root = myTree->getRoot();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      root = myTree->insertNodeTree(root, randomValue);
-    }
-
-    timer.startCounter();
-    root = myTree->deleteNodeTree(root, root->data);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myTree->deleteTree(myTree->getRoot());
-    free(myTree);
-    free(root);
-  }
-  cout << endl
-       << "Average time of deleting root from prefilled BST is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    BST *myTree = new BST();
-    NodeTree *root = myTree->getRoot();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      root = myTree->insertNodeTree(root, randomValue);
-    }
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myTree->calculateAverage(root);
-    sumValue += (timer.getCounter()) * 100000;
-    myTree->deleteTree(myTree->getRoot());
-    free(myTree);
-    free(root);
-  }
-  cout << endl
-       << "Average time of calculating average of random value to prefilled "
-          "BST is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
+  return total / static_cast<double>(iterations);
 }
 
-// conducts time tests for linkedlist
-void linkedlist(int howManyTestUnits, int howManyValuesToPrefill) {
+template <typename Factory, typename Setup, typename Operation>
+double measureOperation(std::size_t iterations, Factory factory, Setup setup,
+                        Operation operation) {
   Timer timer;
-  double sumValue = 0.0;
-  float randomValue;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
+  double total = 0.0;
+  for (std::size_t i = 0; i < iterations; ++i) {
+    auto structure = factory();
+    setup(*structure, i);
     timer.startCounter();
-    LinkedList *myList = new LinkedList();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myList->cleanList();
-    free(myList);
-  }
-  cout << endl
-       << "Average time of creating new list instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    LinkedList *myList = new LinkedList();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myList->insertValue(myList->getTailPointer(), randomValue);
+    if constexpr (std::is_void_v<decltype(
+                      std::invoke(operation, *structure, i))>) {
+      std::invoke(operation, *structure, i);
+      total += timer.getCounter();
+    } else {
+      const auto result = std::invoke(operation, *structure, i);
+      total += timer.getCounter();
+      consume(result);
     }
-
-    timer.startCounter();
-    myList->cleanList();
-    free(myList);
-
-    sumValue += (timer.getCounter()) * 100000;
   }
-  cout << endl
-       << "Average time of deleting prefilled list instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    LinkedList *myList = new LinkedList();
-
-    srand(time(NULL));
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myList->insertValue(myList->getTailPointer(), randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myList->cleanList();
-    free(myList);
-  }
-  cout << endl
-       << "Average time of adding random value to empty linkedlist is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    LinkedList *myList = new LinkedList();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myList->insertValue(myList->getTailPointer(), randomValue);
-    }
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myList->insertValue(myList->getTailPointer(), randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myList->cleanList();
-    free(myList);
-  }
-  cout << endl
-       << "Average time of adding random value to prefilled linkedlist is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    LinkedList *myList = new LinkedList();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myList->insertValue(myList->getTailPointer(), randomValue);
-    }
-
-    timer.startCounter();
-    myList->removeFromIndex(myList->getHeadPointer(), 0);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myList->cleanList();
-    free(myList);
-  }
-  cout << endl
-       << "Average time of deleting first value from prefilled linkedlist is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    LinkedList *myList = new LinkedList();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myList->insertValue(myList->getTailPointer(), randomValue);
-    }
-
-    timer.startCounter();
-    myList->calculateAverage();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myList->cleanList();
-    free(myList);
-  }
-  cout << endl
-       << "Average time of calculating average of prefilled linkedlist is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
+  return total / static_cast<double>(iterations);
 }
 
-// conducts time tests for bst
-void heap(int howManyTestUnits, int howManyValuesToPrefill) {
-
-  Timer timer;
-  double sumValue = 0.0;
-  float randomValue;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    timer.startCounter();
-    Heap *myHeap = new Heap();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myHeap->deleteHeap();
-    free(myHeap);
-  }
-  cout << endl
-       << "Average time of creating new heap instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    Heap *myHeap = new Heap();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myHeap->insertNodeMaxHeap(randomValue);
+template <typename Factory, typename Insert, typename Remove, typename Average,
+          typename Clear>
+void runSuite(std::string_view name, std::size_t iterations,
+              std::size_t prefill, const std::vector<float> &values,
+              Factory factory, Insert insert, Remove remove, Average average,
+              Clear clear) {
+  const auto emptySetup = [](auto &, std::size_t) {};
+  const auto filledSetup = [&](auto &structure, std::size_t iteration) {
+    const std::size_t offset = iteration * (prefill + 1);
+    for (std::size_t i = 0; i < prefill; ++i) {
+      insert(structure, values[offset + i]);
     }
+  };
+  const auto add = [&](auto &structure, std::size_t iteration) {
+    insert(structure, values[iteration * (prefill + 1) + prefill]);
+  };
 
-    timer.startCounter();
-
-    myHeap->deleteHeap();
-    free(myHeap);
-
-    sumValue += (timer.getCounter()) * 100000;
-  }
-  cout << endl
-       << "Average time of deleting prefilled heap instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Heap *myHeap = new Heap();
-
-    srand(time(NULL));
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myHeap->insertNodeMaxHeap(randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myHeap->deleteHeap();
-    free(myHeap);
-  }
-  cout << endl
-       << "Average time of adding random value to empty heap is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Heap *myHeap = new Heap();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myHeap->insertNodeMaxHeap(randomValue);
-    }
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myHeap->insertNodeMaxHeap(randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myHeap->deleteHeap();
-    free(myHeap);
-  }
-  cout << endl
-       << "Average time of adding random value to prefilled heap is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Heap *myHeap = new Heap();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myHeap->insertNodeMaxHeap(randomValue);
-    }
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myHeap->deleteNodeMaxHeap();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myHeap->deleteHeap();
-    free(myHeap);
-  }
-  cout << endl
-       << "Average time of deleting root from prefilled heap is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Heap *myHeap = new Heap();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myHeap->insertNodeMaxHeap(randomValue);
-    }
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myHeap->calculateAverage();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myHeap->deleteHeap();
-    free(myHeap);
-  }
-  cout << endl
-       << "Average time of calculating average of prefilled heap is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
+  std::cout << "\n" << name << "\n"
+            << "  create:          " << measureCreation(iterations, factory)
+            << " ms\n"
+            << "  insert empty:    "
+            << measureOperation(iterations, factory, emptySetup, add) << " ms\n"
+            << "  insert prefilled:"
+            << std::setw(10)
+            << measureOperation(iterations, factory, filledSetup, add) << " ms\n"
+            << "  remove:          "
+            << measureOperation(iterations, factory, filledSetup,
+                                [&](auto &value, std::size_t) {
+                                  return remove(value);
+                                })
+            << " ms\n"
+            << "  average:         "
+            << measureOperation(iterations, factory, filledSetup,
+                                [&](auto &value, std::size_t) {
+                                  return average(value);
+                                })
+            << " ms\n"
+            << "  clear:           "
+            << measureOperation(iterations, factory, filledSetup,
+                                [&](auto &value, std::size_t) {
+                                  clear(value);
+                                })
+            << " ms\n";
 }
 
-// conducts time tests for queue
-void queue(int howManyTestUnits, int howManyValuesToPrefill) {
-  Timer timer;
-  float randomValue;
-  double sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    timer.startCounter();
-    Queue *myQueue = myQueue->createQueue(24);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myQueue->cleanQueue(myQueue);
-    free(myQueue);
-  }
-  cout << endl
-       << "Average time of creating new queue instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    Queue *myQueue = myQueue->createQueue(24);
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myQueue->enqueue(myQueue, randomValue);
-    }
-
-    timer.startCounter();
-    myQueue->cleanQueue(myQueue);
-    free(myQueue);
-
-    sumValue += (timer.getCounter()) * 100000;
-  }
-  cout << endl
-       << "Average time of deleting prefilled queue instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Queue *myQueue = myQueue->createQueue(24);
-    srand(time(NULL));
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myQueue->enqueue(myQueue, randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myQueue->cleanQueue(myQueue);
-    free(myQueue);
-  }
-  cout << endl
-       << "Average time of adding random value to empty queue is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Queue *myQueue = myQueue->createQueue(24);
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myQueue->enqueue(myQueue, randomValue);
-    }
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myQueue->enqueue(myQueue, randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myQueue->cleanQueue(myQueue);
-    free(myQueue);
-  }
-  cout << endl
-       << "Average time of adding random value to prefilled queue is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Queue *myQueue = myQueue->createQueue(24);
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myQueue->enqueue(myQueue, randomValue);
-    }
-
-    timer.startCounter();
-    myQueue->dequeue(myQueue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myQueue->cleanQueue(myQueue);
-    free(myQueue);
-  }
-  cout << endl
-       << "Average time of deleting  value from prefilled queue is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Queue *myQueue = myQueue->createQueue(24);
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myQueue->enqueue(myQueue, randomValue);
-    }
-
-    timer.startCounter();
-    myQueue->calculateAverage(myQueue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myQueue->cleanQueue(myQueue);
-    free(myQueue);
-  }
-  cout << endl
-       << "Average time of calculating average of prefilled queue is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
+std::vector<float> randomValues(std::size_t count) {
+  std::mt19937 engine(0xC0FFEEU);
+  std::uniform_real_distribution<float> distribution(0.0F, 100.0F);
+  std::vector<float> values(count);
+  std::generate(values.begin(), values.end(),
+                [&] { return distribution(engine); });
+  return values;
 }
-
-// conducts time tests for array
-void array(int howManyTestUnits, int howManyValuesToPrefill) {
-  Timer timer;
-  double sumValue = 0.0;
-  float randomValue;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    timer.startCounter();
-    Array *myTab = new Array();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myTab->cleanArray();
-    free(myTab);
-  }
-  cout << endl
-       << "Average time of creating new array instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-
-    Array *myTab = new Array();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myTab->insertValue(randomValue);
-    }
-
-    timer.startCounter();
-
-    myTab->cleanArray();
-    free(myTab);
-
-    sumValue += (timer.getCounter()) * 100000;
-  }
-  cout << endl
-       << "Average time of deleting prefilled array instance: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Array *myTab = new Array();
-
-    srand(time(NULL));
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myTab->insertValue(randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myTab->cleanArray();
-    free(myTab);
-  }
-  cout << endl
-       << "Average time of adding random value to empty array is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Array *myTab = new Array();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myTab->insertValue(randomValue);
-    }
-
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myTab->insertValue(randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myTab->cleanArray();
-    free(myTab);
-  }
-  cout << endl
-       << "Average time of adding random value to prefilled array is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  int randomIndex;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Array *myTab = new Array();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myTab->insertValue(randomValue);
-    }
-
-    randomIndex = rand() % myTab->getSize();
-    timer.startCounter();
-    myTab->removeFromIndex(randomValue);
-    sumValue += (timer.getCounter()) * 100000;
-
-    myTab->cleanArray();
-    free(myTab);
-  }
-  cout << endl
-       << "Average time of deleting random index from prefilled array is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-  sumValue = 0.0;
-  for (int i = 0; i < howManyTestUnits; i++) {
-    Array *myTab = new Array();
-    randomValue = 0.0;
-    srand(time(NULL));
-    for (int j = 0; j < howManyValuesToPrefill; j++) {
-      randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-      myTab->insertValue(randomValue);
-    }
-
-    randomValue = ((100.0 - 0.0) * ((float)rand() / RAND_MAX)) + 0.0;
-    timer.startCounter();
-    myTab->calculateAverage();
-    sumValue += (timer.getCounter()) * 100000;
-
-    myTab->cleanArray();
-    free(myTab);
-  }
-  cout << endl
-       << "Average time of calculating average of random value to prefilled "
-          "array is: "
-       << sumValue / howManyTestUnits << "ms /100000" << endl;
-}
+} // namespace
 
 int main(int argc, char *argv[]) {
+  try {
+    const BenchmarkOptions options = parseOptions(argc, argv);
+    if (options.help) {
+      std::cout << "Usage: benchmark [--iterations N] [--prefill N]\n";
+      return 0;
+    }
 
-  cout << "===================================================================="
-          "================="
-       << endl;
-  cout << "*** Measure times for Array ***" << endl;
-  ::array(1000, 12);
+    const auto values =
+        randomValues(options.iterations * (options.prefill + 1));
+    std::cout << std::fixed << std::setprecision(6)
+              << "Average operation time over " << options.iterations
+              << " iterations; prefill=" << options.prefill << "\n";
 
-  cout << "===================================================================="
-          "================="
-       << endl;
-  cout << "*** Measure times for Stack ***" << endl;
-  ::stack(1000, 12);
+    runSuite(
+        "Array", options.iterations, options.prefill, values,
+        [] { return std::make_unique<Array>(); },
+        [](Array &value, float item) { value.insertValue(item); },
+        [](Array &value) { return value.removeFromIndex(value.getSize() / 2); },
+        [](const Array &value) { return value.calculateAverage(); },
+        [](Array &value) { value.cleanArray(); });
 
-  cout << "===================================================================="
-          "================="
-       << endl;
-  cout << "*** Measure times for Queue ***" << endl;
-  ::queue(1000, 12);
+    runSuite(
+        "Stack", options.iterations, options.prefill, values,
+        [] { return std::make_unique<Stack>(); },
+        [](Stack &value, float item) { value.push(item); },
+        [](Stack &value) { return value.pop(); },
+        [](const Stack &value) { return value.calculateAverage(); },
+        [](Stack &value) { value.clear(); });
 
-  cout << "===================================================================="
-          "================="
-       << endl;
-  cout << "*** Measure times for Binary Tree ***" << endl;
-  bst(1000, 12);
+    runSuite(
+        "Queue", options.iterations, options.prefill, values,
+        [&] { return std::make_unique<Queue>(std::max<std::size_t>(24, options.prefill + 1)); },
+        [](Queue &value, float item) { value.enqueue(item); },
+        [](Queue &value) { return value.dequeue(); },
+        [](const Queue &value) { return value.calculateAverage(); },
+        [](Queue &value) { value.cleanQueue(); });
 
-  cout << "===================================================================="
-          "================="
-       << endl;
-  cout << "*** Measure times for LinkedList ***" << endl;
-  linkedlist(1000, 12);
+    runSuite(
+        "Binary search tree", options.iterations, options.prefill, values,
+        [] { return std::make_unique<BST>(); },
+        [](BST &value, float item) { value.insert(item); },
+        [](BST &value) { return value.eraseRoot(); },
+        [](const BST &value) { return value.calculateAverage(); },
+        [](BST &value) { value.clear(); });
 
-  cout << "===================================================================="
-          "================="
-       << endl;
-  cout << "*** Measure times for Heap ***" << endl;
-  heap(1000, 12);
-  cout << "===================================================================="
-          "================="
-       << endl;
+    runSuite(
+        "Linked list", options.iterations, options.prefill, values,
+        [] { return std::make_unique<LinkedList>(); },
+        [](LinkedList &value, float item) { value.insertValue(item); },
+        [](LinkedList &value) { return value.removeFromIndex(value.size() / 2); },
+        [](const LinkedList &value) { return value.calculateAverage(); },
+        [](LinkedList &value) { value.cleanList(); });
 
-  cout << "Press Enter to exit...";
-  cin.ignore();
-  cin.get();
-  return 0;
-  // compile with: g++ -o benchmark main.cpp structures/array.cpp
-  // structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp
-  // structures/bintree.cpp structures/maxheap.cpp structures/stack.cpp
+    runSuite(
+        "Max heap", options.iterations, options.prefill, values,
+        [] { return std::make_unique<Heap>(); },
+        [](Heap &value, float item) { value.insertNodeMaxHeap(item); },
+        [](Heap &value) { return value.deleteNodeMaxHeap(); },
+        [](const Heap &value) { return value.calculateAverage(); },
+        [](Heap &value) { value.deleteHeap(); });
+  } catch (const std::exception &error) {
+    std::cerr << "error: " << error.what() << '\n';
+    return 1;
+  }
 }
+
+// Allow this entrypoint to be compiled directly without listing every source
+// file. CMake defines BENCHMARK_USE_LIBRARY and links the same sources normally.
+#ifndef BENCHMARK_USE_LIBRARY
+#include "structures/array.cpp"
+#include "structures/bintree.cpp"
+#include "structures/linkedlist.cpp"
+#include "structures/maxheap.cpp"
+#include "structures/queue.cpp"
+#include "structures/stack.cpp"
+#include "structures/timer.cpp"
+#endif

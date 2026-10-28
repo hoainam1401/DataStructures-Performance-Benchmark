@@ -1,31 +1,17 @@
-#include <iostream>
+#pragma once
+
+#include <cstddef>
+#include <optional>
 #include <vector>
-using namespace std;
 
 class Heap {
-private:
-  vector<float> maxHeap;
-  int cnt = 0;
-
 public:
-  Heap();
-  ~Heap();
+  void insertNodeMaxHeap(float value);
+  [[nodiscard]] std::optional<float> deleteNodeMaxHeap();
+  [[nodiscard]] std::optional<float> calculateAverage() const noexcept;
+  void deleteHeap() noexcept;
+  [[nodiscard]] std::size_t size() const noexcept;
 
-  // Calculate average of all the value of node in heap
-  float calculateAverage();
-
-  // Swap node in heap
-  void swap(float *firstElement, float *secondElement);
-
-  void heapify(int index, float heapType);
-
-  // Add new node to heap
-  void insertNodeMaxHeap(float data);
-
-  // Remove node from heap
-  void deleteNodeMaxHeap();
-  void displayHeap();
-
-  // Delete all the heap
-  void deleteHeap();
+private:
+  std::vector<float> values_;
 };

@@ -1,108 +1,56 @@
-# DataStructures Performance Benchmark
+# Data Structures Performance Benchmark
 
-A comprehensive benchmarking suite for comparing the performance of common data structures in C++. **Now cross-platform compatible** (Windows, macOS, Linux).
+A C++20 benchmark comparing operation time and resident-memory usage for a dynamic array, stack, circular queue, binary search tree, doubly linked list, and max heap. The project builds on Windows, Linux, and macOS.
 
-## Overview
+## Requirements
 
-This project provides an empirical analysis of time complexity and RAM usage for common operations across six fundamental data structures:
+- CMake 3.16 or newer
+- A C++20 compiler (MSVC, GCC, or Clang)
 
-- Array
-- Stack
-- Queue
-- Binary Search Tree (BST)
-- Linked List
-- Max Heap
+## Build and test
 
-Each data structure is tested for various operations to help developers understand real-world performance implications beyond theoretical time complexity.
+For the quickest local run, compile either entrypoint directly:
 
-## Features
+```sh
+clang++ -std=c++20 main.cpp -o benchmark-local
+./benchmark-local
 
-- **Cross-Platform Support**: Works on Windows, macOS, and Linux
-- **Standardized Testing Framework**: All data structures are tested under identical conditions
-- **Comprehensive Operation Testing**:
-  - Creation of new instances
-  - Deletion of prefilled instances
-  - Adding elements to empty structures
-  - Adding elements to prefilled structures
-  - Removing elements from structures
-  - Calculating averages of elements
-- **Dual Benchmarking**: Measure both time complexity and RAM usage
-- **Statistical Validity**: Each operation is tested multiple times (default: 1000) to ensure reliable results
-- **Easy Comparison**: Results are displayed in a consistent format for simple comparison
-
-## Build Instructions
-
-Compile the project using g++:
-
-### Time Benchmarks
-```bash
-g++ -o benchmark main.cpp structures/array.cpp structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp structures/bintree.cpp structures/maxheap.cpp structures/stack.cpp
+clang++ -std=c++20 mainRAM.cpp -o benchmarkRAM-local
+./benchmarkRAM-local --prefill 100000
 ```
 
-### RAM Usage Benchmarks
-```bash
-g++ -o benchmarkRAM mainRAM.cpp structures/array.cpp structures/linkedlist.cpp structures/queue.cpp structures/timer.cpp structures/bintree.cpp structures/maxheap.cpp structures/stack.cpp
+Use `g++` instead of `clang++` when using GCC. The entrypoint includes its required implementations automatically; do not also list files from `structures/` in these direct commands.
+
+For tests and normal development, use CMake:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-## Usage
+With a single-config generator, executables are written to `build/`. Visual Studio places Release executables in `build/Release/`.
 
-Run the compiled executables:
+## Run
 
-```bash
-# Time benchmarks
-./benchmark
-
-# RAM usage benchmarks
-./benchmarkRAM
+```sh
+./build/benchmark --iterations 1000 --prefill 12
+./build/benchmarkRAM --prefill 100000
 ```
 
-The programs will run all tests and display performance metrics for each operation on each data structure.
+On Windows with the Visual Studio generator, use `build\Release\benchmark.exe` and `build\Release\benchmarkRAM.exe`.
 
-## Test Parameters
+- `benchmark` reports average elapsed milliseconds. Random inputs are generated before timed regions with a fixed seed so runs are reproducible.
+- `benchmarkRAM` reports the process's current resident set size. Small allocations may show a zero delta because operating systems and allocators work in pages and retain freed memory.
+- Use `--help` to show supported options. The programs are non-interactive.
 
-- **Test Units**: 1000 iterations per operation (configurable)
-- **Prefill Size**: 12 elements (configurable)
-- **Random Values**: Float values between 0 and 100
+## Platform implementation
 
-## Interpreting Results
+RAM usage uses `GetProcessMemoryInfo` on Windows, Mach `task_info` on macOS, and `/proc/self/statm` on Linux. GitHub Actions builds, tests, and smoke-runs both programs on all three platforms.
 
-- **Time benchmarks**: Results are reported as average execution times in milliseconds (scaled by 100000 for precision). Lower values indicate better performance.
-- **RAM benchmarks**: Results show memory usage before and after operations in bytes (B). Lower differences indicate better memory efficiency.
+## Layout
 
-## Project Structure
-
-```
-├── main.cpp                 # Time performance benchmarking
-├── mainRAM.cpp              # RAM usage benchmarking
-├── structures/
-│   ├── array.h/cpp          # Dynamic array implementation
-│   ├── bintree.h/cpp        # Binary search tree implementation
-│   ├── linkedlist.h/cpp     # Linked list implementation
-│   ├── maxheap.h/cpp        # Max heap implementation
-│   ├── queue.h/cpp          # Queue implementation
-│   ├── stack.h/cpp          # Stack implementation
-│   └── timer.h/cpp          # Cross-platform timer utility
-├── analysis.xlsx            # Performance analysis results
-└── README.md                # Project documentation
-```
-
-## Platform Compatibility
-
-This project is designed to work across multiple platforms:
-
-- **Windows**: Full support for both time and RAM benchmarks
-- **macOS**: Full support using Mach kernel APIs for memory measurement
-- **Linux**: Full support using POSIX APIs (can be extended)
-
-The codebase uses conditional compilation (`#ifdef _WIN32`) to provide platform-specific implementations where needed.
-
-## Contributing
-
-Contributions are welcome! Consider adding:
-- Additional data structures
-- More test cases
-- Visualization of results
-- Performance optimization tips based on results
-
-## Images
-![Test Image1](ExampleOfTimeMeasureTest.PNG)
+- `structures/`: data-structure implementations and the steady-clock timer
+- `main.cpp`: time benchmark runner
+- `mainRAM.cpp`, `memory_usage.cpp`: resident-memory benchmark runner
+- `tests/structures_test.cpp`: correctness checks for all structures

@@ -1,160 +1,94 @@
 #include "linkedlist.h"
-#include <iostream>
-using namespace std;
 
-LinkedList::LinkedList() {
-  this->head = NULL;
-  this->tail = NULL;
-}
+LinkedList::~LinkedList() { cleanList(); }
 
-LinkedList::~LinkedList() {
-  cleanList();
-  delete head;
-  delete tail;
-}
-
-void LinkedList::insertValue(ListNode **tail, float value) {
-
-  ListNode *newElem = new ListNode;
-  newElem->data = value;
-  newElem->prev = *tail;
-  newElem->next = NULL;
-
-  if ((*tail) != NULL) {
-    (*tail)->next = newElem;
-  }
-
-  if (this->head == NULL) {
-    this->head = newElem;
-    this->tail = newElem;
-  }
-  *tail = newElem;
-}
-
-float LinkedList::removeFromIndex(ListNode **head, int index) {
-
-  if (*head == NULL || this->tail == NULL) {
-    return -273.15;
-  }
-  ListNodePtr p = *head;
-  for (int i = 0; i < index; i++) {
-    if (p != NULL && p->next != NULL) {
-      p = p->next;
-    } else {
-      return -273.15;
-    }
-  }
-
-  if (p == this->tail) {
-    return removeLast(getTailPointer());
-  }
-
-  if (p == this->head) {
-    return removeFirst(getHeadPointer());
-  }
-
-  if (p->prev != NULL) {
-    (p->prev)->next = p->next;
+void LinkedList::insertValue(float value) {
+  auto *node = new Node{value, nullptr, tail_};
+  if (tail_) {
+    tail_->next = node;
   } else {
-    *head = p->next;
+    head_ = node;
   }
-
-  if (p->next != NULL) {
-    (p->next)->prev = p->prev;
-  }
-
-  float ret = p->data;
-  delete p;
-  return ret;
+  tail_ = node;
+  ++size_;
 }
 
-float LinkedList::calculateAverage() {
-  ListNodePtr p = this->head;
-  float sum = 0;
-  int amount = 0;
-  while (p != this->tail) {
-    // cout<<"DATA: "<<p->data<<endl;
-    sum += p->data;
-    // cout<<"SUM: "<<sum<<endl;
-    amount++;
-    p = p->next;
+std::optional<float> LinkedList::removeFromIndex(std::size_t index) {
+  if (index >= size_) {
+    return std::nullopt;
   }
-  sum += p->data;
-  amount++;
+  if (index == 0) {
+    return removeFirst();
+  }
+  if (index + 1 == size_) {
+    return removeLast();
+  }
 
-  return (sum / amount);
+  Node *node = head_;
+  for (std::size_t i = 0; i < index; ++i) {
+    node = node->next;
+  }
+  node->previous->next = node->next;
+  node->next->previous = node->previous;
+  const float value = node->data;
+  delete node;
+  --size_;
+  return value;
 }
 
-void LinkedList::cleanList() {
-  while (this->head != this->tail) {
-    removeFromIndex(getHeadPointer(), 0);
+std::optional<float> LinkedList::removeFirst() noexcept {
+  if (!head_) {
+    return std::nullopt;
   }
-  removeFromIndex(getHeadPointer(), 0);
+  Node *removed = head_;
+  const float value = removed->data;
+  head_ = removed->next;
+  if (head_) {
+    head_->previous = nullptr;
+  } else {
+    tail_ = nullptr;
+  }
+  delete removed;
+  --size_;
+  return value;
 }
 
-void LinkedList::printList() {
-  if (this->head == NULL || this->tail == NULL) {
-    return;
+std::optional<float> LinkedList::removeLast() noexcept {
+  if (!tail_) {
+    return std::nullopt;
   }
-  ListNode *p = this->head;
-  // cout<<"head: "<<head->data<<endl;
-  // cout<<"tail: "<<tail->data<<endl;
-  while (p != tail) {
-    cout << p->data << " ";
-    p = p->next;
+  Node *removed = tail_;
+  const float value = removed->data;
+  tail_ = removed->previous;
+  if (tail_) {
+    tail_->next = nullptr;
+  } else {
+    head_ = nullptr;
   }
-  cout << p->data << " ";
-  cout << endl;
+  delete removed;
+  --size_;
+  return value;
 }
 
-ListNode **LinkedList::getTailPointer() { return &tail; }
-
-ListNode **LinkedList::getHeadPointer() { return &head; }
-
-float LinkedList::removeFirst(ListNode **head) {
-  ListNode *newHead;
-  if (this->head == this->tail) {
-    float ret = (*head)->data;
-    this->head = NULL;
-    this->tail = NULL;
-
-    delete *head;
-    return ret;
+std::optional<float> LinkedList::calculateAverage() const noexcept {
+  if (!head_) {
+    return std::nullopt;
   }
-
-  if (*head != NULL) {
-    newHead = (*head)->next;
-    if (newHead != NULL) {
-      newHead->prev = NULL;
-    }
-    float ret = (*head)->data;
-    delete *head;
-    this->head = newHead;
-    return ret;
+  double sum = 0.0;
+  for (Node *node = head_; node != nullptr; node = node->next) {
+    sum += node->data;
   }
-  return -273.15;
+  return static_cast<float>(sum / static_cast<double>(size_));
 }
 
-float LinkedList::removeLast(ListNode **tail) {
-  ListNodePtr newTail;
-  if (this->head == this->tail) {
-    float ret = (*tail)->data;
-    this->head = NULL;
-    this->tail = NULL;
-
-    delete *tail;
-    return ret;
+void LinkedList::cleanList() noexcept {
+  while (head_) {
+    Node *next = head_->next;
+    delete head_;
+    head_ = next;
   }
-
-  if (*tail != NULL) {
-    newTail = (*tail)->prev;
-    if (newTail != NULL) {
-      newTail->next = NULL;
-    }
-    float ret = (*tail)->data;
-    delete *tail;
-    this->tail = newTail;
-    return ret;
-  }
-  return -273.15;
+  tail_ = nullptr;
+  size_ = 0;
 }
+
+std::size_t LinkedList::size() const noexcept { return size_; }

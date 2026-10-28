@@ -1,36 +1,24 @@
-#include <iostream>
-using namespace std;
+#pragma once
+
+#include <cstddef>
+#include <optional>
+#include <vector>
+
 class Queue {
-private:
-  int size, capacity;
-  int front, back;
-  float *qArray;
-
 public:
-  // Creates queue of given capacity
-  Queue *createQueue(int);
-  ~Queue();
+  explicit Queue(std::size_t capacity = 24);
 
-  // Returns true when queue is full, else false
-  bool isFull(Queue *);
+  [[nodiscard]] bool isFull() const noexcept;
+  [[nodiscard]] bool isEmpty() const noexcept;
+  void enqueue(float value);
+  [[nodiscard]] std::optional<float> dequeue() noexcept;
+  [[nodiscard]] std::optional<float> calculateAverage() const noexcept;
+  void cleanQueue() noexcept;
+  [[nodiscard]] std::size_t size() const noexcept;
+  [[nodiscard]] std::size_t capacity() const noexcept;
 
-  // Returns true when queue is empty, else false
-  bool isEmpty(Queue *);
-
-  // Adds new float to the back of the queue, if Queue is full it dequeues first
-  // item, then adds
-  void enqueue(Queue *, float);
-
-  // Removes first element from queue returning its value. If empty returns
-  // lowest temperature possible
-  float dequeue(Queue *);
-
-  // Calculates AVG of all objects inside structure
-  float calculateAverage(Queue *);
-
-  // Prints values of items stored in structure
-  void printQueue(Queue *);
-
-  // Removes all items from queue
-  void cleanQueue(Queue *);
+private:
+  std::vector<float> data_;
+  std::size_t front_ = 0;
+  std::size_t size_ = 0;
 };

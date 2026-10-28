@@ -1,52 +1,31 @@
-#include <iostream>
-using namespace std;
+#pragma once
 
-struct ListNode {
-  float data;
-  ListNode *next;
-  ListNode *prev;
-};
-
-typedef ListNode *ListNodePtr;
+#include <cstddef>
+#include <optional>
 
 class LinkedList {
-private:
-  ListNodePtr head = NULL;
-  ListNodePtr tail = NULL;
-
 public:
-  // Constructor
-  LinkedList();
-
-  // Destructor
+  LinkedList() = default;
   ~LinkedList();
+  LinkedList(const LinkedList &) = delete;
+  LinkedList &operator=(const LinkedList &) = delete;
 
-  // Prints values of items stored in structure
-  void printList();
+  void insertValue(float value);
+  [[nodiscard]] std::optional<float> removeFromIndex(std::size_t index);
+  [[nodiscard]] std::optional<float> removeFirst() noexcept;
+  [[nodiscard]] std::optional<float> removeLast() noexcept;
+  [[nodiscard]] std::optional<float> calculateAverage() const noexcept;
+  void cleanList() noexcept;
+  [[nodiscard]] std::size_t size() const noexcept;
 
-  // Returns pointer to tail(which is pointer to last item)
-  ListNode **getTailPointer();
+private:
+  struct Node {
+    float data;
+    Node *next = nullptr;
+    Node *previous = nullptr;
+  };
 
-  // Returns pointer to head(which is pointer to first item)
-  ListNode **getHeadPointer();
-
-  // Adds new item of given value to the end of the structure(which's head's
-  // pointer was provided)
-  void insertValue(ListNodePtr *, float);
-
-  // Removes Nth item(counting from start) from list(which's head's pointer was
-  // provided)
-  float removeFromIndex(ListNode **, int);
-
-  // Removes First item from list(which's head's pointer was provided)
-  float removeFirst(ListNode **);
-
-  // Removes Last item from list(which's tail's pointer was provided)
-  float removeLast(ListNode **);
-
-  // Calculates AVG of all objects inside structure
-  float calculateAverage();
-
-  // Removes all items from list
-  void cleanList();
+  Node *head_ = nullptr;
+  Node *tail_ = nullptr;
+  std::size_t size_ = 0;
 };

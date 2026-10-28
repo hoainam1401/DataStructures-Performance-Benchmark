@@ -1,34 +1,24 @@
+#pragma once
 
-#include <iostream>
-using namespace std;
+#include <cstddef>
+#include <memory>
+#include <optional>
 
 class Array {
-private:
-  int size;
-  float *Arr;
-
 public:
-  // Constructor
-  Array();
+  Array() = default;
+  Array(const Array &) = delete;
+  Array &operator=(const Array &) = delete;
+  Array(Array &&) noexcept = default;
+  Array &operator=(Array &&) noexcept = default;
 
-  // Destructor
-  ~Array();
+  void insertValue(float value);
+  [[nodiscard]] std::optional<float> removeFromIndex(std::size_t index);
+  [[nodiscard]] std::optional<float> calculateAverage() const;
+  void cleanArray() noexcept;
+  [[nodiscard]] std::size_t getSize() const noexcept;
 
-  // Prints values of items stored in structure
-  void printArray();
-
-  // Adds new item of given value to the end of the structure
-  void insertValue(float);
-
-  // Removes Nth item from list(counting from start)
-  float removeFromIndex(int);
-
-  // Calculates AVG of all objects inside structure
-  float calculateAverage();
-
-  // Removes all items from array
-  void cleanArray();
-
-  // Returns size of array
-  int getSize();
+private:
+  std::unique_ptr<float[]> data_;
+  std::size_t size_ = 0;
 };
